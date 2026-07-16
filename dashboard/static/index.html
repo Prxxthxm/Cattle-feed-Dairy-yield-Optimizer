@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feed &amp; Yield Optimizer</title>
+  <style>
+    :root {
+      --ink: #232017;
+      --paper: #f6f2e9;
+      --panel: #fffdf7;
+      --line: #ddd3bd;
+      --clay: #a3521f;
+      --clay-dark: #7c3d13;
+      --moss: #4d6a4a;
+      --moss-dark: #33472f;
+      --gold: #b8862e;
+      --muted: #8a8270;
+      --red: #a13c30;
+      --mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    header {
+      padding: 28px 40px 18px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
+    header h1 span {
+      color: var(--clay);
+    }
+
+    header .sub {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 4px;
+    }
+
+    .status {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .status .dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      margin-right: 6px;
+    }
+
+    .status.ready .dot {
+      background: var(--moss);
+    }
+
+    .status.err .dot {
+      background: var(--red);
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 0;
+      min-height: calc(100vh - 90px);
+    }
+
+    @media (max-width:900px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .controls {
+      padding: 28px 30px 60px;
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .controls h2,
+    .results h2 {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--clay-dark);
+      margin: 0 0 14px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 6px;
+    }
+
+    .field {
+      margin-bottom: 20px;
+    }
+
+    .field label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: var(--ink);
+    }
+
+    .field label .val {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--clay-dark);
+      font-weight: 600;
+    }
+
+    select,
+    input[type=range] {
+      width: 100%;
+    }
+
+    select {
+      padding: 8px 10px;
+      font-size: 13px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      color: var(--ink);
+      border-radius: 2px;
+      font-family: Georgia, serif;
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--line);
+      outline: none;
+      margin-top: 4px;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: var(--clay);
+      cursor: pointer;
+      border: 2px solid var(--paper);
+      box-shadow: 0 0 0 1px var(--clay);
+    }
+
+    input[type=range]::-moz-range-thumb {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: var(--clay);
+      cursor: pointer;
+      border: 2px solid var(--paper);
+      box-shadow: 0 0 0 1px var(--clay);
+    }
+
+    .preset-desc {
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: var(--muted);
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+    .generate-btn {
+      width: 100%;
+      padding: 13px;
+      margin-top: 10px;
+      background: var(--clay);
+      color: #fff8ef;
+      border: none;
+      border-radius: 2px;
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .generate-btn:hover {
+      background: var(--clay-dark);
+    }
+
+    .generate-btn:disabled {
+      background: var(--muted);
+      cursor: default;
+    }
+
+    .results {
+      padding: 28px 40px 60px;
+    }
+
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--line);
+      border: 1px solid var(--line);
+      margin-bottom: 26px;
+    }
+
+    .kpi {
+      background: var(--panel);
+      padding: 18px 16px;
+    }
+
+    .kpi .label {
+      font-family: var(--mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .kpi .value {
+      font-size: 26px;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .kpi .value.pos {
+      color: var(--moss-dark);
+    }
+
+    .kpi .value.neg {
+      color: var(--red);
+    }
+
+    .kpi .unit {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      margin-left: 4px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 26px;
+    }
+
+    @media (max-width:1100px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      padding: 20px 22px;
+      margin-bottom: 26px;
+    }
+
+    .panel h3 {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--clay-dark);
+      margin: 0 0 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      font-family: var(--mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 500;
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    td {
+      padding: 7px 8px;
+      border-bottom: 1px solid #ece5d4;
+    }
+
+    td.num,
+    th.num {
+      text-align: right;
+      font-family: var(--mono);
+    }
+
+    tr.cat-concentrate_energy td:first-child::before,
+    tr.cat-concentrate_protein td:first-child::before {
+      content: "● ";
+      color: var(--gold);
+    }
+
+    tr.cat-roughage_dry td:first-child::before,
+    tr.cat-roughage_green td:first-child::before {
+      content: "● ";
+      color: var(--moss);
+    }
+
+    tr.cat-mineral_supplement td:first-child::before,
+    tr.cat-NPN td:first-child::before {
+      content: "● ";
+      color: var(--muted);
+    }
+
+    .shap-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 9px;
+      font-size: 12.5px;
+    }
+
+    .shap-name {
+      width: 150px;
+      flex-shrink: 0;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--ink);
+    }
+
+    .shap-track {
+      flex: 1;
+      height: 14px;
+      background: #ece5d4;
+      position: relative;
+      border-radius: 1px;
+    }
+
+    .shap-fill {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      border-radius: 1px;
+    }
+
+    .shap-fill.pos {
+      background: var(--moss);
+      left: 50%;
+    }
+
+    .shap-fill.neg {
+      background: var(--red);
+      right: 50%;
+    }
+
+    .shap-mid {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: var(--muted);
+    }
+
+    .shap-val {
+      width: 56px;
+      text-align: right;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .feedback-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .feedback-list li {
+      padding: 11px 0 11px 22px;
+      border-bottom: 1px solid #ece5d4;
+      font-size: 13.5px;
+      line-height: 1.55;
+      position: relative;
+    }
+
+    .feedback-list li:last-child {
+      border-bottom: none;
+    }
+
+    .feedback-list li::before {
+      content: "—";
+      position: absolute;
+      left: 0;
+      color: var(--clay);
+    }
+
+    .placeholder {
+      color: var(--muted);
+      font-style: italic;
+      font-size: 13.5px;
+      padding: 30px 0;
+      text-align: center;
+    }
+
+    .error-box {
+      background: #f6e6e2;
+      border: 1px solid var(--red);
+      color: var(--red);
+      padding: 16px 18px;
+      font-size: 13.5px;
+    }
+
+    .note {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--mono);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div>
+      <h1>Cattle Feed <span>&amp;</span> Dairy Yield Optimizer</h1>
+      <div class="sub">Data Driven Profit Optimization by Feed Tuning</div>
+    </div>
+    <div class="status" id="statusBox"><span class="dot"></span><span id="statusText">connecting to pipeline...</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="controls">
+      <h2>Animal</h2>
+      <div class="field">
+        <label>Breed preset</label>
+        <select id="presetSelect">
+          <option value="">Custom</option>
+        </select>
+        <div class="preset-desc" id="presetDesc"></div>
+      </div>
+      <div class="field">
+        <label>Body weight <span class="val" id="bwVal">450 kg</span></label>
+        <input type="range" id="bw" min="300" max="700" step="5" value="450">
+      </div>
+      <div class="field">
+        <label>Milk fat % <span class="val" id="fatVal">4.0%</span></label>
+        <input type="range" id="fat" min="3.0" max="6.5" step="0.1" value="4.0">
+      </div>
+      <div class="field">
+        <label>Animal type</label>
+        <select id="dmiType">
+          <option value="crossbred">Crossbred / exotic</option>
+          <option value="indigenous">Indigenous (Bos indicus)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Diet type (ML feature)</label>
+        <select id="dietType"></select>
+      </div>
+
+      <h2 style="margin-top:30px;">Target &amp; economics</h2>
+      <div class="field">
+        <label>Target milk yield <span class="val" id="yieldVal">10.0 kg/day</span></label>
+        <input type="range" id="targetYield" min="3" max="30" step="0.25" value="10">
+      </div>
+      <div class="field">
+        <label>Milk price <span class="val" id="priceVal">₹46/kg</span></label>
+        <input type="range" id="milkPrice" min="20" max="80" step="1" value="46">
+      </div>
+
+      <button class="generate-btn" id="generateBtn">Generate</button>
+      <div class="note" id="trainNote"></div>
+    </div>
+
+    <div class="results">
+      <div id="resultsBody">
+        <div class="placeholder">Set the sliders and click Generate to run the LP ration solver and yield model.</div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const API = "";
+
+    function setStatus(state, text) {
+      const box = document.getElementById('statusBox');
+      box.className = 'status ' + state;
+      document.getElementById('statusText').textContent = text;
+    }
+
+    async function init() {
+      setStatus('', 'loading presets...');
+      try {
+        const [presets, diets] = await Promise.all([
+          fetch(API + '/api/presets').then(r => r.json()),
+          fetch(API + '/api/diet_types').then(r => r.json()),
+        ]);
+        const presetSel = document.getElementById('presetSelect');
+        presets.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.breed; opt.textContent = p.breed.replace(/_/g, ' ');
+          opt.dataset.info = JSON.stringify(p);
+          presetSel.appendChild(opt);
+        });
+        const dietSel = document.getElementById('dietType');
+        diets.forEach(d => {
+          const opt = document.createElement('option');
+          opt.value = d; opt.textContent = d.replace(/_/g, ' ');
+          dietSel.appendChild(opt);
+        });
+        presetSel.addEventListener('change', applyPreset);
+
+        setStatus('', 'warming up yield model (first run trains in ~5-10s)...');
+        document.getElementById('generateBtn').disabled = true;
+        const warm = await fetch(API + '/api/warmup', { method: 'POST' }).then(r => r.json());
+        document.getElementById('generateBtn').disabled = false;
+        setStatus('ready', `pipeline ready · OOF R²=${warm.metrics.r2.toFixed(2)}, RMSE=${warm.metrics.rmse.toFixed(2)} kg/day`);
+      } catch (e) {
+        setStatus('err', 'could not reach backend — is backend.py running on port 5050?');
+      }
+    }
+
+    function applyPreset() {
+      const sel = document.getElementById('presetSelect');
+      const opt = sel.options[sel.selectedIndex];
+      const descEl = document.getElementById('presetDesc');
+      if (!opt.value) { descEl.textContent = ''; return; }
+      const p = JSON.parse(opt.dataset.info);
+      document.getElementById('bw').value = p.bw_kg;
+      document.getElementById('fat').value = p.milk_fat_pct;
+      document.getElementById('dmiType').value = p.dmi_type;
+      document.getElementById('targetYield').value = p.milk_yield_kg_day;
+      descEl.textContent = p.description;
+      syncLabels();
+    }
+
+    function syncLabels() {
+      document.getElementById('bwVal').textContent = document.getElementById('bw').value + ' kg';
+      document.getElementById('fatVal').textContent = parseFloat(document.getElementById('fat').value).toFixed(1) + '%';
+      document.getElementById('yieldVal').textContent = parseFloat(document.getElementById('targetYield').value).toFixed(2) + ' kg/day';
+      document.getElementById('priceVal').textContent = '₹' + document.getElementById('milkPrice').value + '/kg';
+    }
+    ['bw', 'fat', 'targetYield', 'milkPrice'].forEach(id => {
+      document.getElementById(id).addEventListener('input', syncLabels);
+    });
+
+    function fmt(n, d = 2) { return Number(n).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+
+    function renderShap(list) {
+      if (!list || !list.length) {
+        return '<div class="note">SHAP explanation only available when the ML yield path (not the ICAR fallback) is used for this combination.</div>';
+      }
+      const maxAbs = Math.max(...list.map(x => Math.abs(x.contribution_kg_per_day)), 0.001);
+      return list.map(x => {
+        const pct = (Math.abs(x.contribution_kg_per_day) / maxAbs * 48);
+        const cls = x.contribution_kg_per_day >= 0 ? 'pos' : 'neg';
+        return `<div class="shap-bar-row">
+      <div class="shap-name">${x.feature}</div>
+      <div class="shap-track"><div class="shap-mid"></div><div class="shap-fill ${cls}" style="width:${pct}%"></div></div>
+      <div class="shap-val">${x.contribution_kg_per_day >= 0 ? '+' : ''}${x.contribution_kg_per_day.toFixed(2)}</div>
+    </div>`;
+      }).join('');
+    }
+
+    function renderRation(items) {
+      const rows = items.map(it => `
+    <tr class="cat-${it.category}">
+      <td>${it.name}</td>
+      <td class="num">${fmt(it.kg_as_fed, 2)}</td>
+      <td class="num">₹${fmt(it.cost_inr, 2)}</td>
+    </tr>`).join('');
+      return `<table>
+    <thead><tr><th>Ingredient</th><th class="num">kg as-fed / day</th><th class="num">Cost</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+    }
+
+    async function generate() {
+      const btn = document.getElementById('generateBtn');
+      btn.disabled = true; btn.textContent = 'Solving...';
+      const body = {
+        bw_kg: parseFloat(document.getElementById('bw').value),
+        fat_pct: parseFloat(document.getElementById('fat').value),
+        dmi_type: document.getElementById('dmiType').value,
+        target_yield: parseFloat(document.getElementById('targetYield').value),
+        milk_price: parseFloat(document.getElementById('milkPrice').value),
+        diet_type_mode: document.getElementById('dietType').value,
+      };
+      try {
+        const res = await fetch(API + '/api/compute', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        renderResults(data);
+      } catch (e) {
+        document.getElementById('resultsBody').innerHTML = `<div class="error-box">Request failed: ${e}</div>`;
+      }
+      btn.disabled = false; btn.textContent = 'Generate';
+    }
+
+    function renderResults(data) {
+      const el = document.getElementById('resultsBody');
+      if (!data.feasible) {
+        el.innerHTML = `<div class="error-box">${data.message}</div>`;
+        return;
+      }
+      const profitClass = data.profit_inr_day >= 0 ? 'pos' : 'neg';
+      el.innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi"><div class="label">Predicted yield</div><div class="value">${fmt(data.predicted_yield_kg_day, 1)}<span class="unit">kg/day</span></div></div>
+      <div class="kpi"><div class="label">Feed cost</div><div class="value">₹${fmt(data.feed_cost_inr_day, 0)}<span class="unit">/day</span></div></div>
+      <div class="kpi"><div class="label">Revenue</div><div class="value">₹${fmt(data.revenue_inr_day, 0)}<span class="unit">/day</span></div></div>
+      <div class="kpi"><div class="label">Profit</div><div class="value ${profitClass}">₹${fmt(data.profit_inr_day, 0)}<span class="unit">/day</span></div></div>
+    </div>
+    <div class="grid-2">
+      <div class="panel">
+        <h3>Ration composition</h3>
+        ${renderRation(data.ration_items)}
+        <div class="note">DMI ${fmt(data.dmi_kg_day, 2)} kg/day · CP intake ${fmt(data.cp_intake_g_day, 0)} g/day
+          · concentrate ${data.conc_prop != null ? fmt(data.conc_prop * 100, 0) + '%' : '—'}
+          · forage ${data.forage_prop != null ? fmt(data.forage_prop * 100, 0) + '%' : '—'}
+          · DM digestibility ${data.dm_digestibility != null ? fmt(data.dm_digestibility * 100, 0) + '%' : '—'}</div>
+      </div>
+      <div class="panel">
+        <h3>Feature contributions to predicted yield</h3>
+        ${renderShap(data.shap_explanation)}
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Feedback</h3>
+      <ul class="feedback-list">${data.feedback.map(f => `<li>${f}</li>`).join('')}</ul>
+    </div>
+  `;
+    }
+
+    document.getElementById('generateBtn').addEventListener('click', generate);
+    syncLabels();
+    init();
+  </script>
+</body>
+
+</html>
